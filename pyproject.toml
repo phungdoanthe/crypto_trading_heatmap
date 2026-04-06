@@ -1,0 +1,10 @@
+[project]
+name = "airflowdockerapiproject"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ccxt>=4.5.46",
+    "ipykernel>=7.2.0",
+]
