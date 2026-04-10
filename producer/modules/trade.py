@@ -2,11 +2,7 @@ from pydantic import BaseModel
 from typing import Literal
 import time
 import asyncio, json, websockets
-from kafka import KafkaProducer
-
-producer = KafkaProducer(
-    bootstrap_servers='localhost:9092',
-    value_serializer=lambda v: json.dumps(v).encode())
+from utils import create_producer
 
 class TradeRecord(BaseModel):
     symbol:    str
@@ -18,6 +14,8 @@ class TradeRecord(BaseModel):
 async def stream_trade(symbol: str = 'btcusdt'):
     url = f"wss://stream.binance.com:9443/ws/{symbol}@trade"
 
+    producer = create_producer()
+    
     async with websockets.connect(url, ping_interval=20) as ws:
         async for raw in ws:
             msg = json.loads(raw)
@@ -29,5 +27,5 @@ async def stream_trade(symbol: str = 'btcusdt'):
                 'side':      'buy' if not msg['m'] else 'sell' ,
             }
             record = TradeRecord(**record)
-            print("Sending record:", record)
-            producer.send('raw_trade', value=record.model_dump())
+            print("Sending trade record:", record)
+            safe_send(producer, 'raw_order_book', record.model_dump())

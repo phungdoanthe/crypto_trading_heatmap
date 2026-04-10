@@ -2,23 +2,20 @@ from pydantic import BaseModel
 from typing import Literal
 import time
 import asyncio, json, websockets
-from kafka import KafkaProducer
-
-producer = KafkaProducer(
-    bootstrap_servers='localhost:9092',
-    value_serializer=lambda v: json.dumps(v).encode()
-)
+from utils import create_producer, safe_send
 
 class OrderBookSnapshot(BaseModel):
     symbol:    str
     timestamp: int
-    price: int
-    qty: int
+    price: float
+    qty: float
     order_type: Literal['bid', 'ask']
 
 async def stream_order_book(symbol: str = 'btcusdt'):
     # @depth20@100ms = 20-level book, pushed every 100ms
     url = f"wss://stream.binance.com:9443/ws/{symbol}@depth20@100ms"
+
+    producer = create_producer()
 
     async with websockets.connect(url, ping_interval=20) as ws:
         async for raw in ws:
@@ -33,4 +30,5 @@ async def stream_order_book(symbol: str = 'btcusdt'):
                         'order_type': order_type[:-1]  # 'bids' -> 'bid', 'asks' -> 'ask'
                     }
                     record = OrderBookSnapshot(**record)
-                    producer.send('raw_order_book', value=record.model_dump())
+                    print("Sending ob record:", record)
+                    safe_send(producer, 'raw_order_book', record.model_dump())

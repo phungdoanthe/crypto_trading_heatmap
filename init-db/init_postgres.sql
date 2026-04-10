@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS trade_events (
     symbol TEXT,
     price DOUBLE PRECISION,
     qty DOUBLE PRECISION,
-    side STRING,
+    side TEXT,
     PRIMARY KEY (symbol)
 );
 
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS ob_events (
     symbol TEXT,
     price DOUBLE PRECISION,
     qty DOUBLE PRECISION,
-    order_type STRING,
+    order_type TEXT,
     timestamp BIGINT,
     PRIMARY KEY (symbol)
 );

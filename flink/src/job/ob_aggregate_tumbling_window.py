@@ -1,9 +1,17 @@
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.table import EnvironmentSettings, StreamTableEnvironment
+import os
 
 
 def create_ob_sink_postgres(t_env):
-    table_name = 'ob_agg_1min'
+    table_name = 'ob_agg_onemin'
+    db_host = os.getenv("POSTGRES_HOST")
+    db_port = os.getenv("POSTGRES_PORT")
+    db_name = os.getenv("POSTGRES_DB")
+    db_user = os.getenv("POSTGRES_USER")
+    db_password = os.getenv("POSTGRES_PASSWORD")
+    jdbc_url = f"jdbc:postgresql://{db_host}:{db_port}/{db_name}"
+
     sink_ddl = f"""
         CREATE TABLE {table_name} (
             window_start TIMESTAMP(3),
@@ -15,10 +23,10 @@ def create_ob_sink_postgres(t_env):
             PRIMARY KEY (window_start, symbol) NOT ENFORCED
         ) WITH (
             'connector' = 'jdbc',
-            'url' = 'jdbc:postgresql://postgres:5432/postgres',
+            'url' = '{jdbc_url}',
             'table-name' = '{table_name}',
-            'username' = 'postgres',
-            'password' = 'postgres',
+            'username' = '{db_user}',
+            'password' = '{db_password}',
             'driver' = 'org.postgresql.Driver'
         );
     """
