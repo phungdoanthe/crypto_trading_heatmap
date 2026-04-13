@@ -3,8 +3,7 @@ from pyflink.table import EnvironmentSettings, StreamTableEnvironment
 import os
 
 def create_trade_sink_postgres(t_env):
-    table_name = 'trade_agg_onemin'
-    table_name = 'ob_agg_onemin'
+    table_name = 'trade_agg_1min'
     db_host = os.getenv("POSTGRES_HOST")
     db_port = os.getenv("POSTGRES_PORT")
     db_name = os.getenv("POSTGRES_DB")

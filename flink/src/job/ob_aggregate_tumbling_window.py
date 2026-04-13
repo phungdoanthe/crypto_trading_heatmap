@@ -4,7 +4,7 @@ import os
 
 
 def create_ob_sink_postgres(t_env):
-    table_name = 'ob_agg_onemin'
+    table_name = 'ob_agg_1min'
     db_host = os.getenv("POSTGRES_HOST")
     db_port = os.getenv("POSTGRES_PORT")
     db_name = os.getenv("POSTGRES_DB")
@@ -48,7 +48,7 @@ def create_ob_source_kafka(t_env):
         ) WITH (
             'connector' = 'kafka',
             'properties.bootstrap.servers' = 'redpanda:29092',
-            'topic' = 'ob-stream',
+            'topic' = 'raw_order_book',
             'scan.startup.mode' = 'earliest-offset',
             'properties.auto.offset.reset' = 'earliest',
             'format' = 'json'

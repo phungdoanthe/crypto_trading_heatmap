@@ -28,4 +28,4 @@ async def stream_trade(symbol: str = 'btcusdt'):
             }
             record = TradeRecord(**record)
             print("Sending trade record:", record)
-            safe_send(producer, 'raw_order_book', record.model_dump())
+            safe_send(producer, 'raw_trade', record.model_dump())

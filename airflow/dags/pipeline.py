@@ -14,14 +14,14 @@ default_args = {
 @dag(
     dag_id='crypto_pipeline',
     default_args=default_args,
-    start_date=datetime(2024, 1, 1),
-    schedule='*/15 * * * *',
+    start_date=datetime(2025, 1, 1),
+    schedule='0 8 * * *',
     catchup=False,
 )
 def crypto_pipeline():
 
     @task()
-    def submit_trade_job():
+    def submit_trade_job(execution_timeout=timedelta(minutes=9)):
         import requests
         res = requests.post(
             'http://jobmanager:8081/jars/upload',
@@ -30,7 +30,7 @@ def crypto_pipeline():
         res.raise_for_status()
 
     @task()
-    def submit_ob_job():
+    def submit_ob_job(execution_timeout=timedelta(minutes=9)):
         import requests
         res = requests.post(
             'http://jobmanager:8081/jars/upload',
@@ -39,6 +39,7 @@ def crypto_pipeline():
         res.raise_for_status()
 
 
-    submit_trade_job() >> submit_ob_job()
+    submit_trade_job()
+    submit_ob_job()
 
 crypto_pipeline()
