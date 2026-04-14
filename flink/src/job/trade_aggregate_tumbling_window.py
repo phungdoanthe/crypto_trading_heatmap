@@ -41,14 +41,13 @@ def create_trade_source_kafka(t_env):
             price DOUBLE,
             qty DOUBLE,
             side STRING,
-            timestamp BIGINT,
-            event_timestamp AS TO_TIMESTAMP(FROM_UNIXTIME(timestamp / 1000)),
+            ts BIGINT,
+            event_timestamp AS TO_TIMESTAMP(FROM_UNIXTIME(ts / 1000)),
             WATERMARK FOR event_timestamp AS event_timestamp - INTERVAL '5' SECOND
         ) WITH (
             'connector' = 'kafka',
             'properties.bootstrap.servers' = 'redpanda:29092',
             'topic' = 'raw_trade',
-            'group.id' = 'trade-agg-group',
             'scan.startup.mode' = 'earliest-offset',
             'properties.auto.offset.reset' = 'earliest',
             'format' = 'json'

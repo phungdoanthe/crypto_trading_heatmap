@@ -14,5 +14,7 @@ def create_producer():
 
 @retry((Exception,), retries=5, delay=2)
 def safe_send(producer, topic, value):
-    producer.send(topic, value)
-    producer.flush()
+    try:
+        producer.send(topic, value)
+    except Exception as e:
+        print(f"Error sending to Kafka: {e}")

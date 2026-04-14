@@ -6,9 +6,9 @@ from utils import create_producer, safe_send
 
 class OrderBookSnapshot(BaseModel):
     symbol:    str
-    timestamp: int
-    price: float
-    qty: float
+    ts:        int
+    price:     float
+    qty:       float
     order_type: Literal['bid', 'ask']
 
 async def stream_order_book(symbol: str = 'btcusdt'):
@@ -24,10 +24,10 @@ async def stream_order_book(symbol: str = 'btcusdt'):
                 for price, qty in msg[order_type]:
                     record = {
                         'symbol':    symbol.upper(),
-                        'timestamp': int(time.time() * 1000),          
+                        'ts': int(time.time() * 1000),          
                         'price':     float(price),   
                         'qty':    float(qty),
-                        'order_type': order_type[:-1]  # 'bids' -> 'bid', 'asks' -> 'ask'
+                        'order_type': order_type[:-1]
                     }
                     record = OrderBookSnapshot(**record)
                     print("Sending ob record:", record)

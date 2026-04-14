@@ -6,9 +6,9 @@ from utils import create_producer
 
 class TradeRecord(BaseModel):
     symbol:    str
-    timestamp: int
+    ts:        int
     price:     float
-    qty:    float
+    qty:       float
     side:      Literal['buy', 'sell']
 
 async def stream_trade(symbol: str = 'btcusdt'):
@@ -21,7 +21,7 @@ async def stream_trade(symbol: str = 'btcusdt'):
             msg = json.loads(raw)
             record = {
                 'symbol':    symbol.upper(),
-                'timestamp': msg['T'],
+                'ts': msg['T'],
                 'price':     float(msg['p']),
                 'qty':       float(msg['q']),
                 'side':      'buy' if not msg['m'] else 'sell' ,

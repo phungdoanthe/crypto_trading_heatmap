@@ -42,8 +42,8 @@ def create_ob_source_kafka(t_env):
             price DOUBLE,
             qty DOUBLE,
             order_type STRING,
-            timestamp BIGINT,
-            event_timestamp AS TO_TIMESTAMP(FROM_UNIXTIME(timestamp / 1000)),
+            ts BIGINT,
+            event_timestamp AS TO_TIMESTAMP(FROM_UNIXTIME(ts / 1000)),
             WATERMARK FOR event_timestamp AS event_timestamp - INTERVAL '5' SECOND
         ) WITH (
             'connector' = 'kafka',
