@@ -20,15 +20,22 @@ async def stream_order_book(symbol: str = 'btcusdt'):
     async with websockets.connect(url, ping_interval=20) as ws:
         async for raw in ws:
             msg = json.loads(raw)
+            records = []
             for order_type in ['bids', 'asks']:
                 for price, qty in msg[order_type]:
                     record = {
-                        'symbol':    symbol.upper(),
-                        'ts': int(time.time() * 1000),          
-                        'price':     float(price),   
-                        'qty':    float(qty),
+                        'symbol':   symbol.upper(),
+                        'ts':       int(time.time() * 1000),          
+                        'price':    float(price),   
+                        'qty':      float(qty),
                         'order_type': order_type[:-1]
                     }
-                    record = OrderBookSnapshot(**record)
-                    print("Sending ob record:", record)
-                    safe_send(producer, 'raw_order_book', record.model_dump())
+                    records.append(OrderBookSnapshot(**record).model_dump())
+
+            await asyncio.to_thread(
+                safe_send,
+                producer,
+                'raw_order_book',
+                records
+            )
+            print(f"Sent {len(records)} ob records")

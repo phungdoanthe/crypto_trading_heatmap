@@ -1,33 +1,3 @@
-x-airflow-common:
-  &airflow-common
-  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.1.8}
-  build: ./airflow
-  env_file: 
-    - .env
-  environment:
-    &airflow-common-env
-    AIRFLOW__CORE__EXECUTOR: LocalExecutor
-    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW_DB_URL}
-    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-    AIRFLOW__CORE__FERNET_KEY: ''
-    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
-    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
-    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: "http://airflow-apiserver:8080/execution/"
-    AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW__API_AUTH__JWT_SECRET:-airflow_jwt_secret}
-    AIRFLOW__API_AUTH__JWT_ISSUER: ${AIRFLOW__API_AUTH__JWT_ISSUER:-airflow}
-  volumes:
-    &airflow-common-volumes
-    - ./airflow/dags:/opt/airflow/dags
-    - ./airflow/logs:/opt/airflow/logs
-    - ./airflow/plugins:/opt/airflow/plugins
-  user: "${AIRFLOW_UID:-50000}:0"
-  depends_on:
-    &airflow-common-depends-on
-    postgres_airflow:
-      condition: service_healthy
-    airflow-init:
-      condition: service_completed_successfully
 
 services:
   redpanda:
@@ -83,9 +53,15 @@ services:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: jobmanager
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - ./flink:/opt/flink/usrlib
       - ./flink/src:/opt/src
+      - ./start_jobs.sh:/start_jobs.sh
     depends_on:
       postgres:
         condition: service_healthy
@@ -120,95 +96,32 @@ services:
         taskmanager.memory.process.size: 1728m
         taskmanager.numberOfTaskSlots: 15
         parallelism.default: 3
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 
-  postgres_airflow:
-    image: postgres:17
-    container_name: postgres_airflow
-    restart: on-failure
+  flink-submit:
+    image: pyflink-crypto
+    pull_policy: never
+    user: root
     environment:
-      POSTGRES_DB: ${AIRFLOW_DB_NAME}
-      POSTGRES_USER: ${AIRFLOW_DB_USER}
-      POSTGRES_PASSWORD: ${AIRFLOW_DB_PASSWORD}
-    ports:
-      - "5433:5432"
-    volumes:
-      - postgres_airflow_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${AIRFLOW_DB_USER}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  airflow-init:
-    <<: *airflow-common
-    container_name: airflow-init
-    entrypoint: /bin/bash
-    command:
-      - -c
       - |
-        mkdir -p /opt/airflow/{logs,dags,plugins}
-        chown -R 50000:0 /opt/airflow/
-        /entrypoint airflow version
-    environment:
-      <<: *airflow-common-env
-      _AIRFLOW_DB_MIGRATE: "true"
-      _AIRFLOW_WWW_USER_CREATE: "true"
-      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
-      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
-    user: "0:0"
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: jobmanager
+        rest.address: jobmanager
+        rest.port: 8081
     depends_on:
-      postgres_airflow:
+      jobmanager:
         condition: service_healthy
-
-  airflow-apiserver:
-    <<: *airflow-common
-    container_name: airflow-apiserver
-    command: api-server
-    ports:
-      - "8080:8080"
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/monitor/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    restart: always
-
-  airflow-scheduler:
-    <<: *airflow-common
-    container_name: airflow-scheduler
-    command: scheduler
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    restart: always
-
-  airflow-dag-processor:
-    <<: *airflow-common
-    container_name: airflow-dag-processor
-    command: dag-processor
-    healthcheck:
-      test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    restart: always
-
-  airflow-triggerer:
-    <<: *airflow-common
-    container_name: airflow-triggerer
-    command: triggerer
-    healthcheck:
-      test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"']
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    restart: always
+    volumes:
+      - ./flink/src:/opt/src
+    command: >
+      bash -c "
+      /opt/flink/bin/flink run -py /opt/src/job/ob_aggregate_tumbling_window.py --pyFiles /opt/src -d;
+      /opt/flink/bin/flink run -py /opt/src/job/trade_aggregate_tumbling_window.py --pyFiles /opt/src -d;
+      "
 
   producer:
     build:
@@ -219,6 +132,5 @@ services:
     depends_on:
       redpanda:
         condition: service_healthy
+  
 
-volumes:
-  postgres_airflow_data:   

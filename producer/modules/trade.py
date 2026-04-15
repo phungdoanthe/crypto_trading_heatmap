@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from typing import Literal
 import time
 import asyncio, json, websockets
-from utils import create_producer
+from utils import create_producer, safe_send
 
 class TradeRecord(BaseModel):
     symbol:    str
@@ -17,15 +17,21 @@ async def stream_trade(symbol: str = 'btcusdt'):
     producer = create_producer()
     
     async with websockets.connect(url, ping_interval=20) as ws:
+
         async for raw in ws:
             msg = json.loads(raw)
             record = {
-                'symbol':    symbol.upper(),
-                'ts': msg['T'],
+                'symbol':     symbol.upper(),
+                'ts':         msg['T'],
                 'price':     float(msg['p']),
                 'qty':       float(msg['q']),
                 'side':      'buy' if not msg['m'] else 'sell' ,
             }
             record = TradeRecord(**record)
-            print("Sending trade record:", record)
-            safe_send(producer, 'raw_trade', record.model_dump())
+            print("Sent trade record:", record)
+            await asyncio.to_thread(
+                safe_send,
+                producer,
+                'raw_trade',
+                record.model_dump()
+            )

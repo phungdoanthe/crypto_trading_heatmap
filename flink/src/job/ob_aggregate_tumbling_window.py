@@ -80,7 +80,7 @@ def log_ob_processing():
                     order_type,
                     price,
                     SUM(qty) AS total_qty,
-                    SUM(price * qty) / SUM(qty) AS vwap,
+                    SUM(price * qty) / SUM(qty) AS vwap
                 FROM TABLE(
                     TUMBLE(TABLE {source_table}, DESCRIPTOR(event_timestamp), INTERVAL '1' MINUTE)
                 )
