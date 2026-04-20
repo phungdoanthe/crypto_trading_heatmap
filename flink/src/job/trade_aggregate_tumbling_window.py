@@ -9,7 +9,7 @@ def create_trade_sink_postgres(t_env):
     db_name = os.getenv("POSTGRES_DB")
     db_user = os.getenv("POSTGRES_USER")
     db_password = os.getenv("POSTGRES_PASSWORD")
-    jdbc_url = f"jdbc:postgresql://{db_host}:{db_port}/{db_name}"    
+    jdbc_url = f"jdbc:postgresql://{db_host}:5432/{db_name}"    
     
     sink_ddl = f"""
         CREATE TABLE {table_name} (

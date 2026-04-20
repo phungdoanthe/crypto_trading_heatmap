@@ -6,20 +6,20 @@ import os
 def create_ob_sink_postgres(t_env):
     table_name = 'ob_agg_1min'
     db_host = os.getenv("POSTGRES_HOST")
-    db_port = os.getenv("POSTGRES_PORT")
     db_name = os.getenv("POSTGRES_DB")
     db_user = os.getenv("POSTGRES_USER")
     db_password = os.getenv("POSTGRES_PASSWORD")
-    jdbc_url = f"jdbc:postgresql://{db_host}:{db_port}/{db_name}"
+    jdbc_url = f"jdbc:postgresql://{db_host}:5432/{db_name}"
 
     sink_ddl = f"""
         CREATE TABLE {table_name} (
-            window_start TIMESTAMP(3),
-            symbol STRING,
-            order_type STRING,
-            price DOUBLE,
-            total_qty DOUBLE,
-            vwap DOUBLE,
+            window_start    TIMESTAMP(3),
+            symbol          STRING,
+            bid_liquidity   DOUBLE,
+            ask_liquidity   DOUBLE,
+            total_liquidity DOUBLE,
+            imbalance       DOUBLE,
+            vwap            DOUBLE,
             PRIMARY KEY (window_start, symbol) NOT ENFORCED
         ) WITH (
             'connector' = 'jdbc',
@@ -71,21 +71,28 @@ def log_ob_processing():
         source_table = create_ob_source_kafka(t_env)
         sink_table = create_ob_sink_postgres(t_env)
 
-        t_env.execute_sql(
-            f"""
-                INSERT INTO {sink_table}
-                SELECT
-                    window_start,
-                    symbol,
-                    order_type,
-                    price,
-                    SUM(qty) AS total_qty,
-                    SUM(price * qty) / SUM(qty) AS vwap
-                FROM TABLE(
-                    TUMBLE(TABLE {source_table}, DESCRIPTOR(event_timestamp), INTERVAL '1' MINUTE)
-                )
-                GROUP BY window_start, symbol, order_type, price
-            """
+        t_env.execute_sql(f"""
+        INSERT INTO {sink_table}
+        SELECT
+            window_start,
+            symbol,
+
+            SUM(CASE WHEN order_type = 'buy' THEN qty ELSE 0 END) AS bid_liquidity,
+            SUM(CASE WHEN order_type = 'sell' THEN qty ELSE 0 END) AS ask_liquidity,
+
+            SUM(qty) AS total_liquidity,
+
+            (SUM(CASE WHEN order_type = 'buy' THEN qty ELSE 0 END)
+            - SUM(CASE WHEN order_type = 'sell' THEN qty ELSE 0 END)
+            ) / SUM(qty) AS imbalance,
+
+            SUM(price * qty) / SUM(qty) AS vwap
+
+        FROM TABLE(
+            TUMBLE(TABLE {source_table}, DESCRIPTOR(event_timestamp), INTERVAL '1' MINUTE)
+        )
+        GROUP BY window_start, symbol
+        """
         ).wait()
 
     except Exception as e:

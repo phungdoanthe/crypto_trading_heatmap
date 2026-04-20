@@ -30,7 +30,7 @@ services:
     volumes:
       - ./init-db:/docker-entrypoint-initdb.d
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -105,7 +105,6 @@ services:
   flink-submit:
     image: pyflink-crypto
     pull_policy: never
-    user: root
     environment:
       - |
         FLINK_PROPERTIES=
