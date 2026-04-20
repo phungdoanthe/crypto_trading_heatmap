@@ -13,12 +13,16 @@ def create_trade_sink_postgres(t_env):
     
     sink_ddl = f"""
         CREATE TABLE {table_name} (
-            window_start TIMESTAMP(3),
-            symbol STRING,
-            total_qty DOUBLE,
-            vwap DOUBLE,
-            buy_qty DOUBLE,
-            sell_qty DOUBLE,
+            window_start    TIMESTAMP(3),
+            symbol          STRING,
+            high_price      DOUBLE,
+            low_price       DOUBLE,
+            open_price      DOUBLE,
+            close_price     DOUBLE,
+            total_qty       DOUBLE,
+            vwap            DOUBLE,
+            buy_qty         DOUBLE,
+            sell_qty        DOUBLE,
             PRIMARY KEY (window_start, symbol) NOT ENFORCED
         ) WITH (
             'connector' = 'jdbc',
@@ -76,14 +80,31 @@ def log_trade_processing():
                 SELECT
                     window_start,
                     symbol,
+                    MAX(price) AS high_price,
+                    MIN(price) AS low_price,
+
+                    MAX(CASE WHEN rn_asc = 1 THEN price END) AS open_price,
+                    MAX(CASE WHEN rn_desc = 1 THEN price END) AS close_price,
+
                     SUM(qty) AS total_qty,
                     SUM(price * qty) / SUM(qty) AS vwap,
-                    SUM(CASE WHEN side='buy' THEN qty ELSE 0 END) AS buy_qty,
-                    SUM(CASE WHEN side='sell' THEN qty ELSE 0 END) AS sell_qty
-                FROM TABLE(
-                    TUMBLE(TABLE {source_table}, DESCRIPTOR(event_timestamp), INTERVAL '1' MINUTE)
+                    SUM(CASE WHEN side = 'buy' THEN qty ELSE 0 END) AS buy_qty,
+                    SUM(CASE WHEN side = 'sell' THEN qty ELSE 0 END) AS sell_qty
+                FROM (
+                    SELECT *,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY window_start, symbol
+                            ORDER BY event_timestamp ASC
+                        ) AS rn_asc,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY window_start, symbol
+                            ORDER BY event_timestamp ASC
+                        ) AS rn_desc
+                    FROM TABLE(
+                        TUMBLE(TABLE trade_events, DESCRIPTOR(event_timestamp), INTERVAL '1' MINUTE)
+                    )
                 )
-                GROUP BY window_start, symbol
+                GROUP BY window_start, symbol;
             """
         ).wait()
 

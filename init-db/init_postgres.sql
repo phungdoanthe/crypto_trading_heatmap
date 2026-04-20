@@ -8,14 +8,6 @@ CREATE TABLE IF NOT EXISTS trade_agg_1min (
     PRIMARY KEY (window_start, symbol)
 );
 
-CREATE TABLE IF NOT EXISTS trade_events (
-    symbol TEXT,
-    price DOUBLE PRECISION,
-    qty DOUBLE PRECISION,
-    side TEXT,
-    PRIMARY KEY (symbol)
-);
-
 CREATE TABLE IF NOT EXISTS ob_agg_1min (
     window_start TIMESTAMP,
     symbol TEXT,
@@ -24,13 +16,4 @@ CREATE TABLE IF NOT EXISTS ob_agg_1min (
     total_qty DOUBLE PRECISION,
     vwap DOUBLE PRECISION,
     PRIMARY KEY (window_start, symbol)
-);
-
-CREATE TABLE IF NOT EXISTS ob_events (
-    symbol TEXT,
-    price DOUBLE PRECISION,
-    qty DOUBLE PRECISION,
-    order_type TEXT,
-    timestamp BIGINT,
-    PRIMARY KEY (symbol)
 );

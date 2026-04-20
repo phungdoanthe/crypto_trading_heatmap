@@ -112,6 +112,11 @@ services:
         jobmanager.rpc.address: jobmanager
         rest.address: jobmanager
         rest.port: 8081
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     depends_on:
       jobmanager:
         condition: service_healthy
@@ -119,8 +124,9 @@ services:
       - ./flink/src:/opt/src
     command: >
       bash -c "
-      /opt/flink/bin/flink run -py /opt/src/job/ob_aggregate_tumbling_window.py --pyFiles /opt/src -d;
-      /opt/flink/bin/flink run -py /opt/src/job/trade_aggregate_tumbling_window.py --pyFiles /opt/src -d;
+      /opt/flink/bin/flink run -py /opt/src/job/ob_aggregate_tumbling_window.py --pyFiles /opt/src -d &
+      /opt/flink/bin/flink run -py /opt/src/job/trade_aggregate_tumbling_window.py --pyFiles /opt/src -d &
+      wait
       "
 
   producer:
